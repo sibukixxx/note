@@ -31,15 +31,18 @@
 
 #	機能	詳細	実装アイデア（具体）
 
-F1	商品説明 → HS候補推論	・自然文/CSV/画像📷から特徴抽出・HS6桁候補を確率付きで3件返却	1. LLM-Router：OpenAI o3 function calling で title, material, use を JSON へ正規化2. 類義検索：HS Explanatory Notes を Faiss ベクトルDB化→embedding cosine 類似3. ルールベース補正：正則表現（素材・含有率）／XGBoost→最終スコアリング
-F2	国別10桁拡張 & 税率出力	・EPA/FTA適用可否、基本税率、特恵税率	JBIC/Tariff Database を週次クローリング→PostgreSQL 更新。税率ロジックは SQL で保持し GraphQL リゾルバが計算
-F3	NACCS様式CSV / PDF生成	・輸出(OUTS – 0500)／輸入(INIM – 0400) 用 CSV・税関署名 PAdES, 電子帳簿保存法タイムスタンプ	🤖 playwright-pdf で官公庁PDFテンプレに自動入力CSVは @fast-csv/format で BOM付SJIS 出力
-F4	バッチ／API連携	・GraphQL + Webhook (結果非同期)・Shopify Admin API App Bridge	Hono (Bun) Edge Functions → Redis QueueSupabase Edge Functionsで Webhook 署名検証
-F5	ユーザーフィードバック学習	・確定HS番号をユーザが選択→再学習	選択イベントを Kafka Topic に蓄積→夜間に LoRA Fine-Tune。失敗時ロールバック用にモジュール化
-F6	データ差分監視 & ロールバック	・WCO/NACCSサイトのCSV更新検知・スキーマ差分で自動マイグレーション	GitHub Actions 定期ジョブ → puppeteer でCSV日付スクレイプ→差分 PR、自動テスト→main マージ&本番RDS移行
-F7	監査ログ / バージョン管理	・HS推論モデルID・データ版数・入力全文をHash化保存	Supabase Row Level Security + pgcrypto で SHA256。Cloud Object Storageへ暗号化バックアップ
-F8	料金・メータード課金	・APIコール数、PDF生成数を従量計測	Stripe Billing → Usage Records API + Webhook Verify
-F9	管理ダッシュボード	・ユーザ／請求／モデル精度メトリクス	tRPC + TanStack Table。Grafana CloudでPromQL 可視化
+| 機能 | 概要 | 技術構成 |
+|------|------|----------|
+| **F1 商品説明 → HS候補推論** | ・自然文/CSV/画像📷から特徴抽出<br>・HS6桁候補を確率付きで3件返却 | 1. **LLM-Router:** OpenAI o3 function calling で `title`, `material`, `use` を JSON へ正規化<br>2. **類義検索:** HS Explanatory Notes を Faiss ベクトルDB化 → embedding cosine 類似<br>3. **ルールベース補正:** 正則表現（素材・含有率）／XGBoost → 最終スコアリング |
+| **F2 国別10桁拡張 & 税率出力** | ・EPA/FTA適用可否、基本税率、特恵税率 | JBIC/Tariff Database を週次クローリング → PostgreSQL 更新<br>税率ロジックは SQL で保持し GraphQL リゾルバが計算 |
+| **F3 NACCS様式CSV / PDF生成** | ・輸出(OUTS – 0500)／輸入(INIM – 0400) 用 CSV<br>・税関署名 PAdES, 電子帳簿保存法タイムスタンプ | 🤖 `playwright-pdf` で官公庁PDFテンプレに自動入力<br>CSV は `@fast-csv/format` で BOM付 SJIS 出力 |
+| **F4 バッチ／API連携** | ・GraphQL + Webhook (結果非同期)<br>・Shopify Admin API App Bridge | `Hono (Bun)` Edge Functions → Redis Queue<br>Supabase Edge Functions で Webhook 署名検証 |
+| **F5 ユーザーフィードバック学習** | ・確定HS番号をユーザが選択 → 再学習 | 選択イベントを Kafka Topic に蓄積 → 夜間に LoRA Fine-Tune<br>失敗時ロールバック用にモジュール化 |
+| **F6 データ差分監視 & ロールバック** | ・WCO/NACCSサイトの CSV 更新検知<br>・スキーマ差分で自動マイグレーション | GitHub Actions 定期ジョブ → `puppeteer` で CSV 日付スクレイプ → 差分 PR、自動テスト → `main` マージ & 本番 RDS 移行 |
+| **F7 監査ログ / バージョン管理** | ・HS推論モデルID<br>・データ版数<br>・入力全文を Hash 化保存 | Supabase Row Level Security + `pgcrypto` で SHA256<br>Cloud Object Storage へ暗号化バックアップ |
+| **F8 料金・メータード課金** | ・APIコール数、PDF生成数を従量計測 | Stripe Billing → Usage Records API + Webhook Verify |
+| **F9 管理ダッシュボード** | ・ユーザ／請求／モデル精度メトリクス | `tRPC` + TanStack Table<br>Grafana Cloud で PromQL 可視化 |
+
 
 
 
@@ -65,11 +68,17 @@ F9	管理ダッシュボード	・ユーザ／請求／モデル精度メトリ�
 
 5. MVPロードマップ（8週想定）
 
-期間	目標
-Week 1-2	F1 コア (LLM 推論 + ベクトル検索) POC, Supabase Auth / テーブル設計
-Week 3-4	F3 CSV/PDF 生成, Next.js Upload UI, Stripe Test Mode
-Week 5-6	Shopify Private App → Webhook 連携, F2 税率DB パイプライン
-Week 7-8	監査ログ & 管理ダッシュボード, F5 ユーザーフィードバック学習 1st cut
+Week 1-2
+F1 コア (LLM 推論 + ベクトル検索) POC, Supabase Auth / テーブル設計
+
+Week 3-4
+F3 CSV/PDF 生成, Next.js Upload UI, Stripe Test Mode
+
+Week 5-6
+Shopify Private App → Webhook 連携, F2 税率DB パイプライン
+
+Week 7-8
+監査ログ & 管理ダッシュボード, F5 ユーザーフィードバック学習 1st cut
 
 
 
@@ -77,10 +86,11 @@ Week 7-8	監査ログ & 管理ダッシュボード, F5 ユーザーフィード
 
 6. リスク & 回避策
 
-リスク	対策
-HSコード誤判定の法的責任	ToS で「最終確認は顧客責任」明記 + 判定根拠(条文リンク)提示
-モデルコスト急騰	OpenAI fallback, Ollama / Mistral-7B-Instruct Edge デプロイを並列実装
-HS・税率改訂追随	GitHub Actions+自動ユニットテスト。CSV差分を Slack 通知 & 手動承認フロー併設
+| リスク | 対策 |
+|--------|------|
+| **HSコード誤判定の法的責任** | ToS で「最終確認は顧客責任」と明記 + 判定根拠(条文リンク)提示 |
+| **モデルコスト急騰** | OpenAI fallback, Ollama / Mistral-7B-Instruct Edge デプロイを並列実装 |
+| **HS・税率改訂追随** | GitHub Actions + 自動ユニットテスト。CSV差分を Slack 通知 & 手動承認フロー併設 |
 
 
 
