@@ -8,17 +8,65 @@ on:
 permissions:
   contents: write
 
+env:
+  TZ: Asia/Tokyo
+
 jobs:
   create-note:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Create note
+      - name: Create daily note
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p notes
-          echo "# Note for $(date +'%Y-%m-%d')" > "notes/$(date +'%Y-%m-%d').md"
+
+          # 日付と曜日
+          DATE=$(date +'%Y-%m-%d')
+          WEEKDAYS=("日" "月" "火" "水" "木" "金" "土")
+          DOW=${WEEKDAYS[$(date +%w)]}
+          YESTERDAY=$(date -d 'yesterday' +'%Y-%m-%d' 2>/dev/null || date -v-1d +'%Y-%m-%d')
+
+          # 前日のGitHub Activity取得
+          echo "Fetching GitHub activity..."
+          COMMITS=$(gh api "/users/${{ github.repository_owner }}/events" --jq "[.[] | select(.type==\"PushEvent\" and .created_at >= \"${YESTERDAY}T00:00:00Z\")] | length" 2>/dev/null || echo "0")
+
+          # ノート作成
+          NOTE_FILE="notes/${DATE}.md"
+
+          if [ -f "$NOTE_FILE" ]; then
+            echo "Note already exists for ${DATE}"
+            exit 0
+          fi
+
+          cat > "$NOTE_FILE" << EOF
+          # ${DATE} (${DOW})
+
+          ## 📋 Today's Tasks
+          - [ ]
+
+          ## 💡 Ideas
+
+
+          ## 📝 Work Log
+
+
+          ## 🔄 Reflection
+          - 良かったこと：
+          - 改善点：
+
+          ---
+          ## 📊 Yesterday's GitHub Activity
+          - Commits: ${COMMITS}
+          EOF
+
+          # インデント除去
+          sed -i 's/^          //' "$NOTE_FILE"
 
       - name: Commit and push
         run: |

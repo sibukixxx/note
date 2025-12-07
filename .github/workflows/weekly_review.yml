@@ -1,0 +1,91 @@
+name: Generate Weekly Review
+
+on:
+  schedule:
+    - cron: "0 1 * * 1"  # 毎週月曜 10:00 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  create-review:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create weekly review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p notes/weekly
+
+          # 先週の日付範囲
+          WEEK_END=$(date -d 'last sunday' +'%Y-%m-%d' 2>/dev/null || date -v-sun +'%Y-%m-%d')
+          WEEK_START=$(date -d "${WEEK_END} - 6 days" +'%Y-%m-%d' 2>/dev/null || date -v-6d -j -f '%Y-%m-%d' "${WEEK_END}" +'%Y-%m-%d')
+          WEEK_NUM=$(date -d "${WEEK_END}" +'%Y-W%V' 2>/dev/null || date -j -f '%Y-%m-%d' "${WEEK_END}" +'%Y-W%V')
+
+          REVIEW_FILE="notes/weekly/${WEEK_NUM}.md"
+
+          if [ -f "$REVIEW_FILE" ]; then
+            echo "Weekly review already exists for ${WEEK_NUM}"
+            exit 0
+          fi
+
+          # GitHub Activity集計
+          COMMITS=$(gh api "/users/${{ github.repository_owner }}/events?per_page=100" --jq "[.[] | select(.type==\"PushEvent\" and .created_at >= \"${WEEK_START}T00:00:00Z\" and .created_at <= \"${WEEK_END}T23:59:59Z\")] | length" 2>/dev/null || echo "0")
+          PRS=$(gh api "/users/${{ github.repository_owner }}/events?per_page=100" --jq "[.[] | select(.type==\"PullRequestEvent\" and .created_at >= \"${WEEK_START}T00:00:00Z\")] | length" 2>/dev/null || echo "0")
+
+          # 日次ノートの内容を収集
+          DAILY_NOTES=""
+          current="$WEEK_START"
+          while [ "$current" != "$(date -d "${WEEK_END} + 1 day" +'%Y-%m-%d' 2>/dev/null || date -v+1d -j -f '%Y-%m-%d' "${WEEK_END}" +'%Y-%m-%d')" ]; do
+            if [ -f "notes/${current}.md" ]; then
+              DAILY_NOTES="${DAILY_NOTES}\n- [${current}](../${current}.md)"
+            fi
+            current=$(date -d "${current} + 1 day" +'%Y-%m-%d' 2>/dev/null || date -v+1d -j -f '%Y-%m-%d' "${current}" +'%Y-%m-%d')
+          done
+
+          cat > "$REVIEW_FILE" << EOF
+          # Weekly Review: ${WEEK_NUM}
+          **Period:** ${WEEK_START} ~ ${WEEK_END}
+
+          ## 📊 GitHub Activity Summary
+          - Total Commits: ${COMMITS}
+          - Pull Requests: ${PRS}
+
+          ## 📅 Daily Notes
+          ${DAILY_NOTES}
+
+          ## 🎯 Weekly Achievements
+
+
+          ## 📝 Key Learnings
+
+
+          ## 🚀 Next Week's Goals
+
+
+          ## 💭 Notes & Reflections
+
+          EOF
+
+          sed -i 's/^          //' "$REVIEW_FILE"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add weekly review for $(date -d 'last sunday' +'%Y-W%V' 2>/dev/null || date -v-sun +'%Y-W%V')"
+            git push
+          fi
