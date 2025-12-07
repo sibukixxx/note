@@ -1,20 +1,27 @@
 name: Generate Daily Note
 on:
   schedule:
-    - cron: '0 0 * * *' # 毎日0時
+    - cron: '0 0 * * *' # 毎日0時 (UTC)
+  workflow_dispatch: # 手動実行も可能に
+
+permissions:
+  contents: write
+
 jobs:
   create-note:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Create new note
-        run: echo "# Note for $(date +'%Y-%m-%d')" > notes/$(date +'%Y-%m-%d').md
+        run: |
+          mkdir -p notes
+          echo "# Note for $(date +'%Y-%m-%d')" > notes/$(date +'%Y-%m-%d').md
       - name: Commit changes
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "Add daily note for $(date +'%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "Add daily note for $(date +'%Y-%m-%d')"
           git push
 
