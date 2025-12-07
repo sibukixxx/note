@@ -10,7 +10,8 @@
       "Bash(python3:*)",
       "Bash(cat:*)",
       "Bash(od:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
