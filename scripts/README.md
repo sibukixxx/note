@@ -9,14 +9,21 @@ Claude Codeとの会話を自動的にMarkdownファイルとして保存し、O
 ### ワンライナーインストール
 
 ```bash
-# このリポジトリから直接インストール
-curl -sL https://raw.githubusercontent.com/sibukixxx/note/main/scripts/install.sh | bash
+# ダウンロードして実行（保存先を指定）
+curl -sLO https://raw.githubusercontent.com/sibukixxx/note/main/scripts/install.sh && \
+  chmod +x install.sh && \
+  echo "y" | ./install.sh ~/Documents/claude-logs
+
+# 対話式で実行する場合
+curl -sLO https://raw.githubusercontent.com/sibukixxx/note/main/scripts/install.sh && \
+  chmod +x install.sh && \
+  ./install.sh
 ```
 
 ### ローカルからインストール
 
 ```bash
-# 1. このリポジトリをクローン（または install.sh をダウンロード）
+# 1. このリポジトリをクローン
 git clone https://github.com/sibukixxx/note.git
 cd note
 
