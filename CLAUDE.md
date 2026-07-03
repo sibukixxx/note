@@ -11,8 +11,9 @@ This is a personal notes repository containing markdown files on various topics 
 
 ## Structure
 
-- Root directory contains all markdown notes (`.md` files)
-- `.github/workflows/daily_note.yaml` - GitHub Actions workflow that creates a daily note at midnight UTC
+- Root directory contains topic notes (`.md` files); daily notes live under `notes/` (e.g., `notes/2025-12-07.md`)
+- `.github/workflows/daily_note.yml` - GitHub Actions workflow that creates a daily note at midnight UTC
+- `.github/workflows/weekly_review.yml` - weekly review workflow; `scripts/` contains an Obsidian sync watcher (launchd plist + shell scripts)
 
 ## Automation
 
